@@ -1,0 +1,10 @@
+{
+  "watch": [
+    "src"
+  ],
+  "ext": "cts,ts,json",
+  "ignore": [
+    "src/**/*.spec.ts"
+  ],
+  "exec": "bun ./src/index.cts"
+}
