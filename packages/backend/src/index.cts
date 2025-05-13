@@ -3,10 +3,17 @@ import multer from 'multer'
 import cors from 'cors'
 import fs from 'fs'
 import path from 'path'
+import {router} from './routes/routes'
+
+
+export const saveDir = 'uploads/'
 
 const app = express()
-const upload = multer({dest: 'uploads/'})
-const saveDir = 'uploads/'
+const upload = multer({dest: saveDir})
+
+app.use(cors())
+app.use(express.json())
+app.use('/', router)
 
 // Инициализация файла metadata
 const initializeFiles = () => {
@@ -16,81 +23,11 @@ const initializeFiles = () => {
 }
 initializeFiles()
 
-const getFileColumns = (filePath: string) => {
-	try {
-		const content = fs.readFileSync(filePath, 'utf8')
-		return content.split('\n')[0].split(',')
-	} catch {
-		return []
-	}
-}
-
-app.use(cors())
-app.use(express.json())
-
 // Создаем папку для загрузок если ее нет
 if (!fs.existsSync('uploads')) {
 	fs.mkdirSync('uploads')
 }
 
-app.post('/upload', upload.single('file'), (req: Request, res) => {
-	try {
-		if (!req?.file) {
-			return res.status(400).json({error: 'No file uploaded'})
-		}
-
-		const newFile = {
-			id: Date.now(),
-			name: req.file.originalname,
-			type: req.file.mimetype,
-			path: req.file.path,
-			date: new Date().toISOString()
-		}
-
-		const files = JSON.parse(fs.readFileSync(saveDir + 'files.json', 'utf8'))
-		files.push(newFile)
-		fs.writeFileSync(saveDir + 'files.json', JSON.stringify(files))
-
-		res.status(201).json(newFile)
-	} catch (error) {
-		console.error('Upload error:', error)
-		res.status(500).json({error: 'File upload failed'})
-	}
-})
-
-// Получение списка файлов
-app.get('/files', (req, res) => {
-	try {
-		const files = JSON.parse(fs.readFileSync(saveDir + 'files.json', 'utf8'))
-			.map(file => ({
-				...file,
-				columns: getFileColumns(file.path)
-			}))
-		res.json(files)
-	} catch (error) {
-		res.status(500).json({error: 'Error reading files'})
-	}
-})
-
-// Удаление файла
-app.delete('/files/:id', (req, res) => {
-	try {
-		const files = JSON.parse(fs.readFileSync(saveDir + 'files.json', 'utf8'))
-		const file = files.find(f => f.id === parseInt(req.params.id))
-
-		if (!file) return res.status(404).json({error: 'File not found'})
-
-		fs.unlinkSync(file.path)
-
-		const updatedFiles = files.filter(f => f.id !== parseInt(req.params.id))
-		fs.writeFileSync(saveDir + 'files.json', JSON.stringify(updatedFiles))
-
-		res.json({message: 'File deleted successfully'})
-	} catch (error) {
-		console.error('Delete error:', error)
-		res.status(500).json({error: 'File deletion failed'})
-	}
-})
 
 // Получение содержимого файла
 app.get('/file/:id', (req, res) => {

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { Button, Modal, Select } from '@mui/material';
 import axios from 'axios';
-import { Line, Bar, Pie } from 'react-chartjs-2';
-import { Modal, Select, Button } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Bar, Line, Pie } from 'react-chartjs-2';
+
 import './CreateChart.css';
 
 const CreateChart = () => {
@@ -19,8 +20,8 @@ const CreateChart = () => {
   useEffect(() => {
     const loadData = async () => {
   const [filesRes, chartsRes] = await Promise.all([
-    axios.get('http://localhost:5000/files'),
-    axios.get('http://localhost:5000/charts')
+    axios.get(import.meta.env.PUBLIC_BACKEND_URL + '/files'),
+    axios.get(import.meta.env.PUBLIC_BACKEND_URL + '/charts')
   ]);
   setFiles(filesRes.data);
   setCharts(chartsRes.data);
@@ -30,7 +31,7 @@ const CreateChart = () => {
 
   const createChart = async () => {
   const response = await axios.post(
-    'http://localhost:5000/charts', 
+    import.meta.env.PUBLIC_BACKEND_URL + '/charts',
     config
   );
 };
@@ -54,46 +55,46 @@ const CreateChart = () => {
         ))}
       </div>
 
-      <Modal open={isModalOpen} onClose={() => setIsModalOpen(false)}>
+      <Modal onClose={() => setIsModalOpen(false)} open={isModalOpen}>
         <div className="chart-modal">
           <h2>Создание графика</h2>
-          
+
           <Select
             label="Файл данных"
-            options={files.map(f => ({ value: f.id, label: f.name }))}
             onChange={e => setConfig({ ...config, fileId: e.target.value })}
+            options={files.map(f => ({ value: f.id, label: f.name }))}
           />
 
           <Select
             label="Тип графика"
+            onChange={e => setConfig({ ...config, type: e.target.value })}
             options={[
               { value: 'line', label: 'Линейный' },
               { value: 'bar', label: 'Столбчатый' },
               { value: 'pie', label: 'Круговая' }
             ]}
-            onChange={e => setConfig({ ...config, type: e.target.value })}
           />
 
           {selectedFile && (
             <>
               <Select
                 label="Ось X"
-                options={selectedFile.columns.map(c => ({ value: c, label: c }))}
                 onChange={e => setConfig({ ...config, xAxis: e.target.value })}
+                options={selectedFile.columns.map(c => ({ value: c, label: c }))}
               />
 
               <Select
                 label="Ось Y"
-                options={selectedFile.columns.map(c => ({ value: c, label: c }))}
                 onChange={e => setConfig({ ...config, yAxis: e.target.value })}
+                options={selectedFile.columns.map(c => ({ value: c, label: c }))}
               />
             </>
           )}
 
-          <Button 
-            variant="contained" 
-            onClick={createChart}
+          <Button
             disabled={!config.fileId || !config.yAxis}
+            variant="contained"
+            onClick={createChart}
           >
             Сохранить
           </Button>

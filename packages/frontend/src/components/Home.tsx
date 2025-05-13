@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom';
 import { 
-  CloudUpload, 
-  DataArray, 
   BarChart, 
-  DashboardCustomize
+  CloudUpload, 
+  DashboardCustomize, 
+  DataArray
 } from '@mui/icons-material';
+import { Link } from 'react-router-dom';
+
 import './Home.css';
 
 const Home = () => {
@@ -25,7 +26,7 @@ const Home = () => {
 
     <div className="home-container">
       {cards.map((card, index) => (
-        <Link to={card.path} key={index} className="nav-card" style={{ borderTop: `4px solid ${card.color}` }}>
+        <Link key={index} className="nav-card" style={{ borderTop: `4px solid ${card.color}` }} to={card.path}>
           <div className="card-icon" style={{ color: card.color }}>{card.icon}</div>
           <h3>{card.title}</h3>
           <p className="card-description">{card.description}</p>

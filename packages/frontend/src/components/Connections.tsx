@@ -1,57 +1,49 @@
-import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import './Connections.css';
+import {useEffect, useRef, useState} from 'react'
+
+import type {IFile} from '../types/IFiles'
+
+import {getFiles, sendFile} from '../api/files'
+
+import './Connections.css'
+
 
 const Connections = () => {
-  const [files, setFiles] = useState([]);
-  const [filter, setFilter] = useState('');
-  const [sortOrder, setSortOrder] = useState('newest');
-  const fileInputRef = useRef(null);
+  const [files, setFiles] = useState<IFile[]>([])
+  const [filter, setFilter] = useState('')
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
+  const fileInputRef = useRef(null)
 
-  const loadFiles = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/files');
-      setFiles(response.data);
-    } catch (error) {
-      console.error('Error loading files:', error);
-      alert('Ошибка загрузки списка файлов');
-    }
-  };
+  const columns = Object.keys(files.at(0) ?? [])
 
   useEffect(() => {
-    loadFiles();
-  }, []);
+    getFiles().then(data => {
+      console.log(data)
+      if (!data) return console.log('Файлов нет')
 
-  const handleFileUpload = async (e) => {
-    const formData = new FormData();
-    formData.append('file', e.target.files[0]);
+      setFiles(data.data)
+    })
+  }, [])
 
-    try {
-      await axios.post('http://localhost:5000/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      await loadFiles();
-    } catch (error) {
-      console.error('Upload error:', error);
-      alert('Ошибка загрузки файла');
-    }
-  };
+  const loadFileHandler = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const form = new FormData()
 
-  const handleDelete = async (id) => {
-    try {
-      await axios.delete(`http://localhost:5000/files/${id}`);
-      setFiles(prev => prev.filter(f => f.id !== id));
-    } catch (error) {
-      console.error('Delete error:', error);
-      alert('Ошибка удаления файла');
-    }
-  };
+    if (!event.target.files?.length) return
 
-  const filteredFiles = files
-    .filter(f => f.name.toLowerCase().includes(filter.toLowerCase()))
-    .sort((a, b) => sortOrder === 'newest' 
-      ? new Date(b.date) - new Date(a.date) 
-      : new Date(a.date) - new Date(b.date));
+    form.append('file', event.target.files[0])
+
+    const result = await sendFile(form)
+    console.log(result)
+  }
+
+  // const handleDelete = async (id) => {
+  //   try {
+  //     await axios.delete(`${import.meta.env.PUBLIC_BACKEND_URL}/files/${id}`)
+  //     setFiles(prev => prev.filter(f => f.id !== id))
+  //   } catch (error) {
+  //     console.error('Delete error:', error)
+  //     alert('Ошибка удаления файла')
+  //   }
+  // }
 
   return (
     <div className="connections-page">
@@ -60,20 +52,22 @@ const Connections = () => {
         <div className="controls">
           <input
             type="text"
-            placeholder="Фильтр по имени"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
+            placeholder="Фильтр по имени"
           />
-          
+
           <div className="sort-buttons">
             <button
               className={sortOrder === 'newest' ? 'active' : ''}
+              type='button'
               onClick={() => setSortOrder('newest')}
             >
               Сначала новые
             </button>
             <button
               className={sortOrder === 'oldest' ? 'active' : ''}
+              type='button'
               onClick={() => setSortOrder('oldest')}
             >
               Сначала старые
@@ -81,54 +75,42 @@ const Connections = () => {
           </div>
 
           <input
-            type="file"
-            accept=".xlsx,.xls,.csv"
             ref={fileInputRef}
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
+            accept=".xlsx,.xls,.csv"
+            style={{display: 'none'}}
+            type="file"
+            onChange={loadFileHandler}
           />
-          <button 
-            className="create-btn"
-            onClick={() => fileInputRef.current.click()}
-          >
-            Создать подключение
-          </button>
         </div>
       </div>
 
-      {filteredFiles.length > 0 ? (
+      {files.length && (
         <table className="connections-table">
           <thead>
             <tr>
-              <th>Название</th>
-              <th>Дата добавления</th>
-              <th>Действия</th>
+              {columns.map(column => {
+                return <th key={column}>{column}</th>
+              })}
             </tr>
           </thead>
           <tbody>
-            {filteredFiles.map(file => (
-              <tr key={file.id}>
-                <td>{file.name}</td>
-                <td>{new Date(file.date).toLocaleDateString('ru-RU')}</td>
-                <td>
-                  <button 
-                    className="delete-btn"
-                    onClick={() => handleDelete(file.id)}
-                  >
-                    Удалить
-                  </button>
-                </td>
+            {files.map((file, index) => (
+              <tr key={index}>
+                {Object.values(file).map((value, index) => {
+                  return <td key={index}>{value}</td>
+                })}
               </tr>
             ))}
           </tbody>
         </table>
-      ) : (
+      )}
+      {!files.length && (
         <div className="empty-state">
           Нет подключенных файлов
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default Connections;
+export default Connections
