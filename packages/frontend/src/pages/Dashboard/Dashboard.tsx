@@ -16,7 +16,7 @@ export const Dashboard = () => {
 	}
 
 	return (
-		<Box sx={{minHeight: '100vh', display: 'flex', flexDirection: 'column'}}>
+		<Box sx={{height: '100%', display: 'flex', flexDirection: 'column'}}>
 			<Header onZoomChange={handleZoomChange} zoomLevel={zoomLevel} />
 
 			<Container maxWidth="xl" sx={{flexGrow: 1, py: 3}}>
@@ -26,27 +26,14 @@ export const Dashboard = () => {
 					</Typography>
 				)}
 
-				<Grid spacing={2} sx={{height: 'calc(100vh - 100px)'}} container>
-					{false ? (
-						<>
-							<Grid item sx={{height: '40%'}} xs={12}>
-								<ImageSelector loading={isLoading} />
-							</Grid>
-							<Grid item sx={{height: '60%'}} xs={12}>
-								<WorkspaceCanvas zoomLevel={zoomLevel} />
-							</Grid>
-						</>
-					) : (
-						<>
-							<Grid item lg={2} md={3} sx={{height: '100%'}} xs={12}>
-								<ImageSelector loading={isLoading} />
-							</Grid>
-							<Grid item lg={10} md={9} sx={{height: '100%'}} xs={12}>
-								<WorkspaceCanvas zoomLevel={zoomLevel} />
-							</Grid>
-						</>
-					)}
-				</Grid>
+				<Box sx={{height: '100%', display: 'flex', gap: '20px'}} container>
+					<Grid item lg={2} md={3} sx={{height: '100%'}} xs={12}>
+						<ImageSelector loading={isLoading} />
+					</Grid>
+					<Grid item lg={10} md={9} sx={{height: '100%', flex: '1 1 auto'}} xs={12}>
+						<WorkspaceCanvas zoomLevel={zoomLevel} />
+					</Grid>
+				</Box>
 			</Container>
 		</Box>
 	)

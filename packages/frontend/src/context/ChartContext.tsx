@@ -1,16 +1,23 @@
-import type { ReactNode} from 'react';
-
 import React, {createContext, use, useEffect, useState} from 'react'
 
-import type {ChartWithPosition, IChart} from '../types/chartTypes'
+import type {IChart} from '../types/chartTypes'
 
 import {getChartImages} from '../api/charts'
 
 
-interface ChartContextProps {
+interface ChartWithPosition extends IChart {
+  currentHeight: number
+  currentWidth: number
+  id: string
+  positionX: number
+  positionY: number
+  selected: boolean
+}
+
+interface ChartContextType {
   allCharts: IChart[]
   error: string | null
-  isLoading: boolean
+  loading: boolean
   selectedCharts: ChartWithPosition[]
   deselectAllCharts: () => void
   removeChart: (id: string) => void
@@ -20,105 +27,80 @@ interface ChartContextProps {
   updateChartSize: (id: string, width: number, height: number) => void
 }
 
-const ChartContext = createContext<ChartContextProps | undefined>(undefined)
+const ChartContext = createContext<ChartContextType | undefined>(undefined)
 
-export const ChartProvider: React.FC<{children: ReactNode}> = ({children}) => {
+export const ChartProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
   const [allCharts, setAllCharts] = useState<IChart[]>([])
   const [selectedCharts, setSelectedCharts] = useState<ChartWithPosition[]>([])
-  const [isLoading, setIsLoading] = useState<boolean>(true)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Fetch all available charts
   useEffect(() => {
     const fetchCharts = async () => {
-      setIsLoading(true)
       try {
         const response = await getChartImages()
         if (response && response.data.charts) {
           setAllCharts(response.data.charts)
-        } else {
-          setError('Failed to fetch charts')
         }
       } catch (err) {
-        setError('An error occurred while fetching charts')
-        console.error(err)
+        setError('Failed to load charts')
       } finally {
-        setIsLoading(false)
+        setLoading(false)
       }
     }
 
     fetchCharts()
   }, [])
 
-  // Add a chart to the workspace
   const selectChart = (chart: IChart) => {
-    // Check if chart is already selected
-    const exists = selectedCharts.some((c) => c.filename === chart.filename)
+    const exists = selectedCharts.some(c => c.download_url === chart.download_url)
     if (exists) return
 
-    // Create a new chart with position data
     const newChart: ChartWithPosition = {
       ...chart,
+      id: Date.now().toString(),
       positionX: 20,
       positionY: 20,
       currentWidth: chart.width,
       currentHeight: chart.height,
-      selected: false,
-      id: Date.now().toString(),
+      selected: false
     }
 
-    setSelectedCharts((prev) => [...prev, newChart])
+    setSelectedCharts(prev => [...prev, newChart])
   }
 
-  // Remove a chart from the workspace
   const removeChart = (id: string) => {
-    setSelectedCharts((prev) => prev.filter((chart) => chart.id !== id))
+    setSelectedCharts(prev => prev.filter(chart => chart.id !== id))
   }
 
-  // Update chart position
   const updateChartPosition = (id: string, x: number, y: number) => {
-    setSelectedCharts((prev) =>
-      prev.map((chart) => {
-        if (chart.id === id) {
-          return {...chart, positionX: x, positionY: y}
-        }
-        return chart
-      })
+    setSelectedCharts(prev =>
+      prev.map(chart =>
+        chart.id === id ? {...chart, positionX: x, positionY: y} : chart
+      )
     )
   }
 
-  // Update chart size
   const updateChartSize = (id: string, width: number, height: number) => {
-    setSelectedCharts((prev) =>
-      prev.map((chart) => {
-        if (chart.id === id) {
-          return {...chart, currentWidth: width, currentHeight: height}
-        }
-        return chart
-      })
+    setSelectedCharts(prev =>
+      prev.map(chart =>
+        chart.id === id ? {...chart, currentWidth: width, currentHeight: height} : chart
+      )
     )
   }
 
-  // Toggle chart selection
   const toggleChartSelection = (id: string) => {
-    setSelectedCharts((prev) =>
-      prev.map((chart) => {
-        if (chart.id === id) {
-          return {...chart, selected: !chart.selected}
-        }
-        // Deselect other charts when one is selected
-        return {...chart, selected: false}
-      })
+    setSelectedCharts(prev =>
+      prev.map(chart => ({
+        ...chart,
+        selected: chart.id === id ? !chart.selected : false
+      }))
     )
   }
 
-  // Deselect all charts
   const deselectAllCharts = () => {
-    setSelectedCharts((prev) =>
-      prev.map((chart) => ({
-        ...chart,
-        selected: false,
-      }))
+    setSelectedCharts(prev =>
+      prev.map(chart => ({...chart, selected: false}))
     )
   }
 
@@ -127,14 +109,14 @@ export const ChartProvider: React.FC<{children: ReactNode}> = ({children}) => {
       value={{
         allCharts,
         selectedCharts,
-        isLoading,
+        loading,
         error,
         selectChart,
         removeChart,
         updateChartPosition,
         updateChartSize,
         toggleChartSelection,
-        deselectAllCharts,
+        deselectAllCharts
       }}
     >
       {children}
@@ -144,7 +126,7 @@ export const ChartProvider: React.FC<{children: ReactNode}> = ({children}) => {
 
 export const useChartContext = () => {
   const context = use(ChartContext)
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useChartContext must be used within a ChartProvider')
   }
   return context

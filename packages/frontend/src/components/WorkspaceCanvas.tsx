@@ -28,8 +28,6 @@ const WorkspaceCanvas = ({zoomLevel}: WorkspaceCanvasProps) => {
     }
   }, [zoomLevel])
 
-  console.log(selectedCharts)
-
   return (
     <Paper
       sx={{
@@ -73,8 +71,8 @@ const WorkspaceCanvas = ({zoomLevel}: WorkspaceCanvasProps) => {
           sx={{
             minHeight: '100%',
             minWidth: '100%',
-            height: 2000,
-            width: 2000,
+            height: '100%',
+            width: '100%',
             position: 'relative',
             transition: 'transform 0.2s ease',
           }}

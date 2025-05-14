@@ -31,8 +31,6 @@ const ImageSelector = ({loading}: ImageSelectorProps) => {
     chart.filename.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  console.log(allCharts)
-
   return (
     <Paper
       sx={{

@@ -1,7 +1,7 @@
 import type { ResizeCallbackData} from 'react-resizable';
 
 import {Box, Paper} from '@mui/material'
-import {useEffect, useRef, useState} from 'react'
+import {useRef, useState} from 'react'
 import Draggable from 'react-draggable'
 import {Resizable} from 'react-resizable'
 
@@ -28,13 +28,7 @@ const DraggableImage = ({chart}: DraggableImageProps) => {
     height: chart.currentHeight
   })
   const [isDragging, setIsDragging] = useState(false)
-  const imageRef = useRef<HTMLImageElement>(null)
-
-  // Update local state if chart props change
-  useEffect(() => {
-    setPosition({x: chart.positionX, y: chart.positionY})
-    setSize({width: chart.currentWidth, height: chart.currentHeight})
-  }, [chart.positionX, chart.positionY, chart.currentWidth, chart.currentHeight])
+  const nodeRef = useRef(null)
 
   // Handle drag events
   const handleDrag = (_e: any, data: {x: number; y: number}) => {
@@ -67,12 +61,14 @@ const DraggableImage = ({chart}: DraggableImageProps) => {
     <Draggable
       handle=".drag-handle"
       bounds="parent"
+      nodeRef={nodeRef}
       onDrag={handleDrag}
       onStart={() => setIsDragging(true)}
       onStop={handleDragStop}
       position={position}
     >
       <Box
+        ref={nodeRef}
         sx={{
           position: 'absolute',
           cursor: isDragging ? 'grabbing' : 'grab',
@@ -125,7 +121,6 @@ const DraggableImage = ({chart}: DraggableImageProps) => {
               className="drag-handle"
             >
               <img
-                ref={imageRef}
                 style={{
                   width: '100%',
                   height: '100%',
