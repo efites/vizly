@@ -59,7 +59,6 @@ const DraggableImage = ({chart}: DraggableImageProps) => {
 
   return (
     <Draggable
-      handle=".drag-handle"
       bounds="parent"
       nodeRef={nodeRef}
       onDrag={handleDrag}
@@ -118,7 +117,6 @@ const DraggableImage = ({chart}: DraggableImageProps) => {
                 bottom: 0,
                 cursor: isDragging ? 'grabbing' : 'grab',
               }}
-              className="drag-handle"
             >
               <img
                 style={{
