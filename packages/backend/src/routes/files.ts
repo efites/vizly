@@ -1,6 +1,5 @@
 import fs from 'fs'
 import express from 'express'
-import {getFileColumns} from 'src/utils/getFileColumns'
 import path from 'path'
 import {parseCsvToJson} from 'src/utils/parseCsvToJson'
 
@@ -19,7 +18,7 @@ FilesRouter.get('/', async (request, response) => {
 })
 
 // Удаление файла
-FilesRouter.delete('/files/:id', (req, res) => {
+FilesRouter.delete('/:id', (req, res) => {
 	try {
 		const files = JSON.parse(fs.readFileSync(saveDir + 'files.json', 'utf8'))
 		const file = files.find(f => f.id === parseInt(req.params.id))

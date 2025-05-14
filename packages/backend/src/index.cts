@@ -9,11 +9,11 @@ import {router} from './routes/routes'
 export const saveDir = 'uploads/'
 
 const app = express()
-const upload = multer({dest: saveDir})
 
 app.use(cors())
 app.use(express.json())
 app.use('/', router)
+app.use(express.static('charts'))
 
 // Инициализация файла metadata
 const initializeFiles = () => {

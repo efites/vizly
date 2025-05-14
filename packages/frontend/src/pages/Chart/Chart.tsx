@@ -1,14 +1,18 @@
 import type {
-	SelectChangeEvent} from '@mui/material';
+	SelectChangeEvent
+} from '@mui/material'
 
 import {
 	Alert,
 	Box,
+	Button,
+	CircularProgress,
 	FormControl,
 	InputLabel,
 	MenuItem,
 	Paper,
 	Select,
+	Snackbar,
 	Typography,
 } from '@mui/material'
 import {
@@ -22,12 +26,14 @@ import {
 	Title,
 	Tooltip,
 } from 'chart.js'
-import React, {useEffect, useMemo, useState} from 'react'
+import {toPng} from 'html-to-image'
+import React, {useEffect, useMemo, useRef, useState} from 'react'
 import {Bar, Line, Scatter} from 'react-chartjs-2'
 
 import type {IFile} from '../../types/IFiles'
 
 import {getFiles} from '../../api/files'
+import {sendImage} from '../../api/images'
 
 ChartJS.register(
 	CategoryScale,
@@ -49,7 +55,16 @@ interface CsvChartProps {
 }
 
 export const Chart: React.FC<CsvChartProps> = () => {
+
+
 	const [files, setFiles] = useState<IFile[]>([])
+
+	const chartRef = useRef<HTMLDivElement>(null)
+	const [isSaving, setIsSaving] = useState(false)
+	const [snackbarOpen, setSnackbarOpen] = useState(false)
+	const [snackbarMessage, setSnackbarMessage] = useState('')
+	const [snackbarSeverity, setSnackbarSeverity] = useState<'error' | 'success'>('success')
+
 	const [xAxis, setXAxis] = useState<string>('')
 	const [yAxis, setYAxis] = useState<string>('')
 	const [chartType, setChartType] = useState<'bar' | 'line' | 'scatter'>('line')
@@ -57,13 +72,13 @@ export const Chart: React.FC<CsvChartProps> = () => {
 	const [numericColumns, setNumericColumns] = useState<string[]>([])
 
 	useEffect(() => {
-    getFiles().then(data => {
-      console.log(data)
-      if (!data) return console.log('Файлов нет')
+		getFiles().then(data => {
+			console.log(data)
+			if (!data) return console.log('Файлов нет')
 
-      setFiles(data.data)
-    })
-  }, [])
+			setFiles(data.data)
+		})
+	}, [])
 
 	// Анализируем данные при загрузке
 	useEffect(() => {
@@ -179,6 +194,55 @@ export const Chart: React.FC<CsvChartProps> = () => {
 		}
 	}
 
+	const dataUrlToBlob = (dataUrl: string): Blob => {
+		const arr = dataUrl.split(',')
+		const mime = arr[0].match(/:(.*?);/)![1]
+		const bstr = atob(arr[1])
+		let n = bstr.length
+		const u8arr = new Uint8Array(n)
+		while (n--) {
+			u8arr[n] = bstr.charCodeAt(n)
+		}
+		return new Blob([u8arr], {type: mime})
+	}
+
+	const saveChartToServer = async () => {
+		if (!chartRef.current) return
+
+		setIsSaving(true)
+		try {
+			// Конвертируем график в PNG изображение
+			const dataUrl = await toPng(chartRef.current, {
+				quality: 0.1,
+				//pixelRatio: 2, // для лучшего качества
+			})
+
+			// Отправляем как FormData вместо JSON для больших файлов
+			const formData = new FormData()
+			formData.append('image', dataUrlToBlob(dataUrl), 'chart.png')
+
+			const response = await sendImage(formData)
+
+			if (response?.status !== 200) {
+				throw new Error('Ошибка при сохранении графика')
+			} else {
+				setSnackbarMessage('График успешно сохранен на сервере')
+				setSnackbarSeverity('success')
+			}
+		} catch (error) {
+			console.error('Ошибка при сохранении графика:', error)
+			setSnackbarMessage('Не удалось сохранить график на сервере')
+			setSnackbarSeverity('error')
+		} finally {
+			setIsSaving(false)
+			setSnackbarOpen(true)
+		}
+	}
+
+	const handleCloseSnackbar = () => {
+		setSnackbarOpen(false)
+	}
+
 	if (columns.length === 0) {
 		return (
 			<Paper sx={{p: 2, textAlign: 'center'}}>
@@ -188,70 +252,100 @@ export const Chart: React.FC<CsvChartProps> = () => {
 	}
 
 	return (
-		<Box sx={{p: 2}}>
-			<Paper sx={{p: 2, mb: 2}}>
-				<Typography variant="h6" gutterBottom>
-					Chart Configuration
-				</Typography>
-				<Box sx={{display: 'flex', gap: 2, flexWrap: 'wrap'}}>
-					<FormControl sx={{minWidth: 120}}>
-						<InputLabel>X-Axis</InputLabel>
-						<Select label="X-Axis" value={xAxis} onChange={handleXAxisChange}>
-							{columns.map((col) => (
-								<MenuItem key={`x-${col}`} value={col}>
-									{col}
-								</MenuItem>
-							))}
-						</Select>
-					</FormControl>
 
-					<FormControl sx={{minWidth: 120}}>
-						<InputLabel>Y-Axis</InputLabel>
-						<Select label="Y-Axis" value={yAxis} onChange={handleYAxisChange}>
-							{numericColumns.map((col) => (
-								<MenuItem key={`y-${col}`} value={col}>
-									{col}
-								</MenuItem>
-							))}
-						</Select>
-					</FormControl>
-
-					<FormControl sx={{minWidth: 120}}>
-						<InputLabel>Chart Type</InputLabel>
-						<Select
-							label="Chart Type"
-							value={chartType}
-							onChange={handleChartTypeChange}
-						>
-							<MenuItem value="bar">Bar Chart</MenuItem>
-							<MenuItem value="line">Line Chart</MenuItem>
-							<MenuItem value="scatter">Scatter Plot</MenuItem>
-						</Select>
-					</FormControl>
-				</Box>
-
-				{numericColumns.length === 0 && (
-					<Alert severity="warning" sx={{mt: 2}}>
-						No numeric columns found in the data. Line and scatter plots require numeric values.
-					</Alert>
-				)}
-			</Paper>
-
-			<Paper sx={{p: 2, height: '400px'}}>
-				{xAxis && yAxis ? (
-					processedData.length > 0 ? (
-						renderChart()
-					) : (
-						<Typography sx={{textAlign: 'center', mt: 10}}>
-							No valid numeric data available for selected Y-axis
+		<div>
+			<div ref={chartRef}>
+				<Box sx={{p: 2}}>
+					<Paper sx={{p: 2, mb: 2}}>
+						<Typography variant="h6" gutterBottom>
+							Chart Configuration
 						</Typography>
-					)
-				) : (
-					<Typography sx={{textAlign: 'center', mt: 10}}>
-						Please select X and Y axes to display the chart
-					</Typography>
-				)}
-			</Paper>
-		</Box>
+						<Box sx={{display: 'flex', gap: 2, flexWrap: 'wrap'}}>
+							<FormControl sx={{minWidth: 120}}>
+								<InputLabel>X-Axis</InputLabel>
+								<Select label="X-Axis" value={xAxis} onChange={handleXAxisChange}>
+									{columns.map((col) => (
+										<MenuItem key={`x-${col}`} value={col}>
+											{col}
+										</MenuItem>
+									))}
+								</Select>
+							</FormControl>
+
+							<FormControl sx={{minWidth: 120}}>
+								<InputLabel>Y-Axis</InputLabel>
+								<Select label="Y-Axis" value={yAxis} onChange={handleYAxisChange}>
+									{numericColumns.map((col) => (
+										<MenuItem key={`y-${col}`} value={col}>
+											{col}
+										</MenuItem>
+									))}
+								</Select>
+							</FormControl>
+
+							<FormControl sx={{minWidth: 120}}>
+								<InputLabel>Chart Type</InputLabel>
+								<Select
+									label="Chart Type"
+									value={chartType}
+									onChange={handleChartTypeChange}
+								>
+									<MenuItem value="bar">Bar Chart</MenuItem>
+									<MenuItem value="line">Line Chart</MenuItem>
+									<MenuItem value="scatter">Scatter Plot</MenuItem>
+								</Select>
+							</FormControl>
+						</Box>
+
+						{numericColumns.length === 0 && (
+							<Alert severity="warning" sx={{mt: 2}}>
+								No numeric columns found in the data. Line and scatter plots require numeric values.
+							</Alert>
+						)}
+					</Paper>
+
+					<Paper sx={{p: 2, height: '400px'}}>
+						{xAxis && yAxis ? (
+							processedData.length > 0 ? (
+								renderChart()
+							) : (
+								<Typography sx={{textAlign: 'center', mt: 10}}>
+									No valid numeric data available for selected Y-axis
+								</Typography>
+							)
+						) : (
+							<Typography sx={{textAlign: 'center', mt: 10}}>
+								Please select X and Y axes to display the chart
+							</Typography>
+						)}
+					</Paper>
+				</Box>
+			</div>
+
+			<Button
+				disabled={isSaving}
+				sx={{mt: 2}}
+				variant="contained"
+				color="primary"
+				onClick={saveChartToServer}
+				startIcon={isSaving ? <CircularProgress size={20} /> : null}
+			>
+				{isSaving ? 'Сохранение...' : 'Сохранить график на сервере'}
+			</Button>
+
+			<Snackbar
+				autoHideDuration={6000}
+				onClose={handleCloseSnackbar}
+				open={snackbarOpen}
+			>
+				<Alert
+					severity={snackbarSeverity}
+					sx={{width: '100%'}}
+					onClose={handleCloseSnackbar}
+				>
+					{snackbarMessage}
+				</Alert>
+			</Snackbar>
+		</div>
 	)
 }
