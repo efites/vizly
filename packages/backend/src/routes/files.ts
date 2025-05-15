@@ -17,23 +17,49 @@ FilesRouter.get('/', async (request, response) => {
 	}
 })
 
-// Удаление файла
-FilesRouter.delete('/:id', (req, res) => {
+// Получение списка файлов
+FilesRouter.get('/all/:filename', async (request, response) => {
 	try {
-		const files = JSON.parse(fs.readFileSync(saveDir + 'files.json', 'utf8'))
-		const file = files.find(f => f.id === parseInt(req.params.id))
+		const filename = request.params.filename
+		const result = await parseCsvToJson(path.resolve('./uploads/' + filename))
 
-		if (!file) return res.status(404).json({error: 'File not found'})
-
-		fs.unlinkSync(file.path)
-
-		const updatedFiles = files.filter(f => f.id !== parseInt(req.params.id))
-		fs.writeFileSync(saveDir + 'files.json', JSON.stringify(updatedFiles))
-
-		res.json({message: 'File deleted successfully'})
+		response.json(result)
 	} catch (error) {
-		console.error('Delete error:', error)
-		res.status(500).json({error: 'File deletion failed'})
+		response.status(500).json({error: 'Error reading files'})
+	}
+})
+
+FilesRouter.delete('/all/:filename', async (request, response) => {
+	try {
+		const filename = request.params.filename
+
+		fs.unlink(path.resolve('./uploads/' + filename), err => {
+			if (err) throw err // не удалось удалить файл
+			console.log('Файл успешно удалён')
+		})
+
+		response.json({message: 'Файл успешно удален'})
+	} catch (error) {
+		response.status(500).json({error: 'Error reading files'})
+	}
+})
+
+FilesRouter.get('/all', async (request, response) => {
+	try {
+		const chartsDir = path.join(path.resolve(), 'uploads')
+		const files = await fs.promises.readdir(chartsDir)
+
+		const fileStats = await Promise.all(
+			files.map(file => fs.promises.stat(path.join(chartsDir, file)))
+		)
+
+		const fileNames = files.filter((file, index) => fileStats[index].isFile())
+
+		return response.json(fileNames)
+	} catch (error) {
+		return {
+			error: error
+		}
 	}
 })
 

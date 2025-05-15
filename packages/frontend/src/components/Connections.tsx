@@ -1,115 +1,76 @@
-import {useEffect, useRef, useState} from 'react'
 
-import type {IFile} from '../types/IFiles'
+import type {SnackbarCloseReason} from '@mui/material'
 
-import {getFiles, sendFile} from '../api/files'
+import {Button, Paper, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography} from '@mui/material'
+import {useEffect, useState} from 'react'
+
+import {deleteFile, getFilesList} from '../api/files'
 
 import './Connections.css'
 
 
 const Connections = () => {
-  const [files, setFiles] = useState<IFile[]>([])
-  const [filter, setFilter] = useState('')
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest')
-  const fileInputRef = useRef(null)
-
-  const columns = Object.keys(files.at(0) ?? [])
+  const [filesList, setFilesList] = useState<string[]>([])
+  const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    getFiles().then(data => {
-      console.log(data)
-      if (!data) return console.log('Файлов нет')
+    getFilesList().then(data => {
+      if (!data) return console.log('Файлов нет!')
 
-      setFiles(data.data)
+      setFilesList(data.data)
     })
-  }, [])
+  }, [open])
 
-  const loadFileHandler = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const form = new FormData()
+  const handleClose = (
+    event: Event | React.SyntheticEvent,
+    reason?: SnackbarCloseReason,
+  ) => {
+    if (reason === 'clickaway') {
+      return
+    }
 
-    if (!event.target.files?.length) return
-
-    form.append('file', event.target.files[0])
-
-    const result = await sendFile(form)
-    console.log(result)
+    setOpen(false)
   }
 
-  // const handleDelete = async (id) => {
-  //   try {
-  //     await axios.delete(`${import.meta.env.PUBLIC_BACKEND_URL}/files/${id}`)
-  //     setFiles(prev => prev.filter(f => f.id !== id))
-  //   } catch (error) {
-  //     console.error('Delete error:', error)
-  //     alert('Ошибка удаления файла')
-  //   }
-  // }
+  const handleDelete = async (filename: string) => {
+    setOpen(true)
+
+    const response = await deleteFile(filename)
+  }
 
   return (
-    <div className="connections-page">
-      <div className="connections-header">
-        <h1>Подключения</h1>
-        <div className="controls">
-          <input
-            type="text"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            placeholder="Фильтр по имени"
-          />
-
-          <div className="sort-buttons">
-            <button
-              className={sortOrder === 'newest' ? 'active' : ''}
-              type='button'
-              onClick={() => setSortOrder('newest')}
+    <TableContainer sx={{maxWidth: '70%', margin: '0 auto'}} component={Paper}>
+      <Snackbar
+        message={"Успешно"}
+        anchorOrigin={{vertical: 'bottom', horizontal: 'right'}}
+        autoHideDuration={6000}
+        onClose={handleClose}
+        open={open}
+      />
+      <Table aria-label="simple table" sx={{minWidth: 650}}>
+        <TableHead>
+          <TableRow>
+            <TableCell><Typography variant='h6' fontWeight={'bold'}>File name</Typography></TableCell>
+            <TableCell align="right"><Typography variant='h6' fontWeight={'bold'}>Actions</Typography></TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {filesList.map((row) => (
+            <TableRow
+              key={row}
+              sx={{'&:last-child td, &:last-child th': {border: 0}}}
             >
-              Сначала новые
-            </button>
-            <button
-              className={sortOrder === 'oldest' ? 'active' : ''}
-              type='button'
-              onClick={() => setSortOrder('oldest')}
-            >
-              Сначала старые
-            </button>
-          </div>
-
-          <input
-            ref={fileInputRef}
-            accept=".xlsx,.xls,.csv"
-            style={{display: 'none'}}
-            type="file"
-            onChange={loadFileHandler}
-          />
-        </div>
-      </div>
-
-      {files.length && (
-        <table className="connections-table">
-          <thead>
-            <tr>
-              {columns.map(column => {
-                return <th key={column}>{column}</th>
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {files.map((file, index) => (
-              <tr key={index}>
-                {Object.values(file).map((value, index) => {
-                  return <td key={index}>{value}</td>
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      {!files.length && (
-        <div className="empty-state">
-          Нет подключенных файлов
-        </div>
-      )}
-    </div>
+              <TableCell component="th" scope="row">
+                {row}
+              </TableCell>
+              <TableCell align="right">
+                <Button type='button' variant="contained" color="error" onClick={() => handleDelete(row)}>Delete</Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
   )
 }
 
