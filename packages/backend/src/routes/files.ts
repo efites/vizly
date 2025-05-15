@@ -2,9 +2,22 @@ import fs from 'fs'
 import express from 'express'
 import path from 'path'
 import {parseCsvToJson} from 'src/utils/parseCsvToJson'
+import multer from 'multer'
 
 
 const FilesRouter = express.Router()
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ storage });
 
 // Получение списка файлов
 FilesRouter.get('/', async (request, response) => {
@@ -16,6 +29,17 @@ FilesRouter.get('/', async (request, response) => {
 		response.status(500).json({error: 'Error reading files'})
 	}
 })
+
+FilesRouter.post('/all', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded' });
+  }
+  res.json({
+    success: true,
+    message: 'File uploaded successfully',
+    filename: req.file.filename
+  });
+});
 
 // Получение списка файлов
 FilesRouter.get('/all/:filename', async (request, response) => {

@@ -52,6 +52,18 @@ const deleteFile = async (filename: string) => {
 	}
 }
 
+const uploadFile = async (formData: FormData) => {
+	try {
+		const response = await api.post('/files/all', formData)
+
+		if (!response.data) return
+
+		return response
+	} catch (error) {
+		console.error('Error loading files:', error)
+	}
+}
+
 const sendFile = async (file: FormData) => {
 	try {
 		const response = await api.post('/files', file)
@@ -62,4 +74,4 @@ const sendFile = async (file: FormData) => {
 	}
 }
 
-export {deleteFile, getFile, getFiles, getFilesList, sendFile}
+export {deleteFile, getFile, getFiles, getFilesList, sendFile, uploadFile}
